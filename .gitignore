@@ -1,0 +1,28 @@
+# Entornos virtuales
+venv/
+env/
+.env
+
+# Archivos compilados de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Carpetas y archivos basura solicitados por el usuario
+documentacion/
+feder/
+imagenes_yolo/
+BORRAR/
+.tempmediaStorage/
+feder.zip
+
+# Imágenes generadas de debug o logs
+*.jpg
+*.png
+*.mp4
+*.log
+
+# Bases de datos y configuraciones locales
+*.sqlite3
+.vscode/

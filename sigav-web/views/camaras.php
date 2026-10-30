@@ -1,7 +1,9 @@
 <?php
 /**
  * SIGAV-UAGRM | Gestión de Cámaras (Fuentes de Video)
+ * Acceso exclusivo para Administrador del Sistema.
  */
+$requireAdmin = true;
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../config/database.php';
 

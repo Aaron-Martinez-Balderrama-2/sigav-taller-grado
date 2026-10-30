@@ -8,26 +8,21 @@ require_once __DIR__ . '/../config/database.php';
 
 try {
     $pdo = getDBConnection();
-    $today = date('Y-m-d');
 
-    // Aforo = vehículos adentro (tienen hora_ingreso HOY pero NO hora_salida)
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM bitacora_accesos WHERE hora_salida IS NULL");
-    $stmt->execute();
+    // Aforo = vehículos adentro (tienen hora_ingreso pero NO hora_salida)
+    $stmt = $pdo->query("SELECT COUNT(*) FROM bitacora_accesos WHERE hora_salida IS NULL");
     $aforo = (int) $stmt->fetchColumn();
 
     // Ingresos de hoy
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM bitacora_accesos WHERE DATE(hora_ingreso) = :today");
-    $stmt->execute([':today' => $today]);
+    $stmt = $pdo->query("SELECT COUNT(*) FROM bitacora_accesos WHERE DATE(hora_ingreso) = CURDATE()");
     $ingresos = (int) $stmt->fetchColumn();
 
     // Salidas de hoy
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM bitacora_accesos WHERE DATE(hora_salida) = :today");
-    $stmt->execute([':today' => $today]);
+    $stmt = $pdo->query("SELECT COUNT(*) FROM bitacora_accesos WHERE DATE(hora_salida) = CURDATE()");
     $salidas = (int) $stmt->fetchColumn();
 
-    // Alertas de hoy
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM bitacora_accesos WHERE alerta_disparada = 1 AND DATE(hora_ingreso) = :today");
-    $stmt->execute([':today' => $today]);
+    // Alertas de hoy (niveles 1 = No empadronado, 2 = Denegado, 3 = Lista negra)
+    $stmt = $pdo->query("SELECT COUNT(*) FROM bitacora_accesos WHERE alerta_disparada > 0 AND DATE(hora_ingreso) = CURDATE()");
     $alertas = (int) $stmt->fetchColumn();
 
     echo json_encode([

@@ -17,7 +17,7 @@ try {
     }
 
     $stmt = $pdo->prepare("
-        SELECT placa, tipo_vehiculo_ia, confianza_ia,
+        SELECT placa, tipo_vehiculo_ia, color_vehiculo, confianza_ia,
                hora_ingreso, puerta_ingreso,
                evidencia_ingreso_foto, evidencia_ingreso_placa,
                hora_salida, puerta_salida, evidencia_salida_foto,

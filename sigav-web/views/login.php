@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $pdo = getDBConnection();
         $stmt = $pdo->prepare("
-            SELECT u.id, u.nombres, u.password_hash, u.estado, r.nombre_rol 
+            SELECT u.id, u.id_rol, u.usuario, u.nombres, u.password_hash, u.estado, r.nombre_rol 
             FROM usuarios u 
             JOIN roles r ON u.id_rol = r.id 
             WHERE u.usuario = :usuario
@@ -38,7 +38,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 // Regenerar ID de sesión para prevenir ataques de fijación
                 session_regenerate_id(true);
-                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['user_id']   = (int) $user['id'];
+                $_SESSION['id_rol']    = (int) $user['id_rol'];
+                $_SESSION['usuario']   = $user['usuario'];
                 $_SESSION['user_name'] = $user['nombres'];
                 $_SESSION['user_role'] = $user['nombre_rol'];
                 header('Location: dashboard.php');
@@ -58,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="description" content="Inicio de Sesión - SIGAV UAGRM">
     <title>SIGAV - Iniciar Sesión</title>
     <link rel="icon" type="image/png" href="../assets/img/uagrm_logo.png">
-    <link rel="stylesheet" href="../assets/css/styles.css">
+    <link rel="stylesheet" href="../assets/css/styles.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/styles.css') ?: '2'; ?>">
 </head>
 <body>
     <div class="login-wrapper">

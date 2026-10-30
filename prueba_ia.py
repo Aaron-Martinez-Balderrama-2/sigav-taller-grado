@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 from ultralytics import YOLO
 import time
 import requests
@@ -6,6 +7,7 @@ import base64
 import json
 import argparse
 import threading
+from detector_color import detectar_color_vehiculo
 
 # Configuración por consola o por defecto
 parser = argparse.ArgumentParser()
@@ -18,7 +20,7 @@ args = parser.parse_args()
 CAMERA_SOURCE = int(args.camera) if args.camera.isdigit() else args.camera
 
 # 2. Configuración para el Sistema Web SIGAV
-API_URL = "http://localhost/ai_emotion/BORRAR/taller1/sigav-web/api/registrar_acceso.php"
+API_URL = "http://127.0.0.1/ai_emotion/BORRAR/taller1/sigav-web/api/registrar_acceso.php"
 SENTIDO = args.sentido
 NOMBRE_PUERTA = args.puerta
 
@@ -78,11 +80,12 @@ except Exception as e:
 ultimos_envios = {}  # Diccionario para no mandar la misma placa 100 veces seguidas
 TIEMPO_ESPERA_DUPLICADOS = 10  # Segundos antes de volver a registrar la misma placa en la base de datos
 
-def enviar_datos_api(placa, tipo_vehiculo, confianza, foto_pano_b64, foto_placa_b64):
+def enviar_datos_api(placa, tipo_vehiculo, color_vehiculo, confianza, foto_pano_b64, foto_placa_b64):
     try:
         payload = {
             "placa": placa,
             "tipo_vehiculo": tipo_vehiculo,
+            "color_vehiculo": color_vehiculo,
             "confianza": confianza,
             "puerta": NOMBRE_PUERTA,
             "sentido": SENTIDO,
@@ -137,6 +140,11 @@ while True:
                 # Prevenir errores si el recorte es inválido
                 if vehicle_crop.size == 0:
                     continue
+
+                color_vehiculo = detectar_color_vehiculo(vehicle_crop)
+                
+                # Actualizar etiqueta con color detectado
+                cv2.putText(display_frame, f"{nombre_vehiculo} ({color_vehiculo}) {conf:.2f}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
                     
                 # Buscar placa dentro del recorte del vehículo
                 plate_results = plate_model(vehicle_crop, verbose=False)
@@ -247,7 +255,7 @@ while True:
                                             # Enviar a la Base de Datos usando un hilo (para no congelar el video mientras espera respuesta)
                                             threading.Thread(
                                                 target=enviar_datos_api, 
-                                                args=(plate_text, nombre_vehiculo, round(p_conf * 100, 2), foto_pano_b64, foto_placa_b64)
+                                                args=(plate_text, nombre_vehiculo, color_vehiculo, round(p_conf * 100, 2), foto_pano_b64, foto_placa_b64)
                                             ).start()
 
     # Mostrar la imagen

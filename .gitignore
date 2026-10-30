@@ -17,11 +17,12 @@ BORRAR/
 .tempmediaStorage/
 feder.zip
 
-# Imágenes generadas de debug o logs
+# Imágenes generadas de debug o logs (permitiendo recursos web del sistema)
 *.jpg
 *.png
 *.mp4
 *.log
+!sigav-web/assets/img/**
 
 # Bases de datos y configuraciones locales
 *.sqlite3

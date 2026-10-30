@@ -2,9 +2,18 @@
 /**
  * SIGAV-UAGRM | Header Include (Sidebar + Top Bar)
  */
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
+    exit;
+}
+
+$isAdmin = (($_SESSION['user_role'] ?? '') === 'Administrador') || ((int) ($_SESSION['id_rol'] ?? 0) === 1);
+
+if (!empty($requireAdmin) && !$isAdmin) {
+    header('Location: dashboard.php?error=acceso_denegado');
     exit;
 }
 
@@ -21,7 +30,7 @@ $userInitial = strtoupper(substr($userName, 0, 1));
     <meta name="description" content="SIGAV - Sistema Inteligente de Gestión de Acceso Vehicular - UAGRM">
     <title>SIGAV - <?php echo ucfirst($currentPage); ?></title>
     <link rel="icon" type="image/png" href="../assets/img/uagrm_logo.png">
-    <link rel="stylesheet" href="../assets/css/styles.css">
+    <link rel="stylesheet" href="../assets/css/styles.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/styles.css') ?: '2'; ?>">
     <script>
         // Aplicar tema guardado antes de que se pinte la página (evitar flash)
         (function(){
@@ -52,14 +61,14 @@ $userInitial = strtoupper(substr($userName, 0, 1));
                 <span class="nav-icon">📋</span> Bitácora Histórica
             </a>
 
-            <span class="nav-section">Administración</span>
+            <span class="nav-section"><?php echo $isAdmin ? 'Administración' : 'Consulta'; ?></span>
             <a href="padron.php" class="nav-link <?php echo $currentPage === 'padron' ? 'active' : ''; ?>" id="nav-padron">
                 <span class="nav-icon">🚗</span> Padrón Vehicular
             </a>
+            <?php if ($isAdmin): ?>
             <a href="camaras.php" class="nav-link <?php echo $currentPage === 'camaras' ? 'active' : ''; ?>" id="nav-camaras">
                 <span class="nav-icon">📹</span> Gestión de Cámaras
             </a>
-            <?php if (($_SESSION['user_role'] ?? '') === 'Administrador'): ?>
             <a href="usuarios.php" class="nav-link <?php echo $currentPage === 'usuarios' ? 'active' : ''; ?>" id="nav-usuarios">
                 <span class="nav-icon">👤</span> Gestión de Usuarios
             </a>

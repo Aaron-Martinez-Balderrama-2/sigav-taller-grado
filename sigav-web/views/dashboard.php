@@ -7,6 +7,18 @@
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
+<?php if (($_GET['error'] ?? '') === 'acceso_denegado'): ?>
+    <div class="login-error" id="accessDeniedMsg">
+        ⛔ Acceso restringido: su rol operativo no tiene permisos para acceder a módulos administrativos.
+    </div>
+<?php endif; ?>
+
+<!-- Banner de Alerta de Seguridad en Tiempo Real (RF10) -->
+<div class="alert-banner" id="securityAlertBanner" role="alert">
+    <span id="securityAlertText"></span>
+    <button type="button" class="modal-close" onclick="dismissSecurityBanner()" aria-label="Cerrar alerta">&times;</button>
+</div>
+
 <!-- Tarjetas de Estadísticas -->
 <div class="stats-grid" id="statsGrid">
     <div class="stat-card blue">
@@ -46,6 +58,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <th>Hora</th>
                 <th>Placa</th>
                 <th>Tipo</th>
+                <th>Color</th>
                 <th>Confianza IA</th>
                 <th>Puerta</th>
                 <th>Estado</th>
@@ -54,7 +67,7 @@ require_once __DIR__ . '/../includes/header.php';
         </thead>
         <tbody id="liveTableBody">
             <tr>
-                <td colspan="7" style="text-align: center; color: var(--on-surface-muted); padding: 40px;">
+                <td colspan="8" style="text-align: center; color: var(--on-surface-muted); padding: 40px;">
                     Esperando detecciones de la IA...
                 </td>
             </tr>
@@ -78,6 +91,36 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
-<script src="../assets/js/dashboard.js"></script>
+<!-- Modal de Corrección Manual de Placa (RF12) -->
+<div class="modal-overlay" id="corregirPlacaModal">
+    <div class="modal-box" style="max-width:440px;">
+        <div class="modal-header">
+            <h3>✏️ Corregir Lectura de Placa</h3>
+            <button class="modal-close" onclick="closeCorregirModal()" id="corregirCloseBtn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="corregirPlacaPreview" style="display:none;margin-bottom:14px;text-align:center;">
+                <img id="corregirPlacaImg" src="" alt="Captura de placa"
+                     style="max-height:110px;border-radius:var(--radius-sm);border:1px solid var(--outline-variant);object-fit:contain;">
+            </div>
+            <div id="corregirPlacaFeedback" class="login-error" style="display:none;"></div>
+            <form id="corregirPlacaForm" onsubmit="submitCorregirPlaca(event)">
+                <input type="hidden" id="corregirRegistroId" value="">
+                <div class="form-group">
+                    <label for="placaCorregidaInput">Matrícula Correcta *</label>
+                    <input type="text" id="placaCorregidaInput" maxlength="15" required
+                           placeholder="Ej: 233BTP"
+                           style="text-transform:uppercase;font-weight:700;letter-spacing:0.08em;font-size:1.05rem;">
+                </div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+                    <button type="button" class="btn btn-outline btn-sm" onclick="closeCorregirModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary btn-sm" id="guardarCorreccionBtn">Guardar Corrección</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="../assets/js/dashboard.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/dashboard.js') ?: '2'; ?>"></script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

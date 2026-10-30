@@ -1,17 +1,27 @@
 import cv2
+import numpy as np
 from ultralytics import YOLO
 import os
+import sys
+import argparse
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 # ==========================================
 # CONFIGURACIÓN
 # ==========================================
-# Pon la foto que quieres probar dentro de la carpeta "prueba_foto" y ponle este nombre:
-FOTO_PATH = 'foto.jpg' 
+FOTO_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'foto.jpg')
 
 # Usar los nuevos modelos exportados a ONNX (muchísimo más rápidos en CPU)
-VEHICLE_MODEL_PATH = '../yolov8n.onnx'
-PLATE_MODEL_PATH = '../placas_bolivia.onnx'
-CHAR_MODEL_PATH = '../caracteres_yolov8.onnx'
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if BASE_DIR not in sys.path:
+    sys.path.append(BASE_DIR)
+from detector_color import detectar_color_vehiculo
+
+VEHICLE_MODEL_PATH = os.path.join(BASE_DIR, 'yolov8n.onnx')
+PLATE_MODEL_PATH = os.path.join(BASE_DIR, 'placas_bolivia.onnx')
+CHAR_MODEL_PATH = os.path.join(BASE_DIR, 'caracteres_yolov8.onnx')
 
 # Nombres de las clases en español
 NOMBRES_VEHICULOS = {
@@ -30,9 +40,15 @@ NOMBRES_CARACTERES = {
     30: 'U', 31: 'V', 32: 'W', 33: 'X', 34: 'Y', 35: 'Z'
 }
 
-# ==========================================
-# INICIALIZACIÓN
-# ==========================================
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--foto', type=str, default='foto.jpg', help='Nombre de la foto dentro de prueba_foto')
+    args = parser.parse_args()
+    FOTO_PATH = args.foto if os.path.isabs(args.foto) else os.path.join(os.path.dirname(os.path.abspath(__file__)), args.foto)
+
+    # ==========================================
+    # INICIALIZACIÓN
+    # ==========================================
 if not os.path.exists(FOTO_PATH):
     print(f"[ERROR] No se encontró la foto '{FOTO_PATH}'.")
     print(f"Por favor, copia una foto de un vehículo en la carpeta 'prueba_foto' y nómbrala '{FOTO_PATH}'")
@@ -71,6 +87,9 @@ for result in vehicle_results:
         # 2. Recortar vehículo
         vehicle_crop = frame[y1:y2, x1:x2]
         if vehicle_crop.size == 0: continue
+
+        color_vehiculo = detectar_color_vehiculo(vehicle_crop)
+        cv2.putText(display_frame, f"{nombre_vehiculo} ({color_vehiculo}) {conf:.2f}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
             
         # 3. Buscar Placa en formato ONNX
         plate_results = plate_model(vehicle_crop, verbose=False)
@@ -156,7 +175,7 @@ for result in vehicle_results:
                     plate_text = "".join([c[1] for c in caracteres_limpios])
                     
                     if plate_text:
-                        print(f">>> PLACA DETECTADA: {plate_text} (Confianza Placa: {p_conf:.2f})")
+                        print(f">>> VEHÍCULO: {nombre_vehiculo} | COLOR: {color_vehiculo} | PLACA DETECTADA: {plate_text} (Confianza Placa: {p_conf:.2f})")
                         # Texto Blanco con borde Negro para que sea super legible en cualquier fondo
                         cv2.putText(display_frame, plate_text, (abs_px1, abs_py1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 0), 4)
                         cv2.putText(display_frame, plate_text, (abs_px1, abs_py1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)

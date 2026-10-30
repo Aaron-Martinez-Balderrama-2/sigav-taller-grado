@@ -2,7 +2,9 @@
 /**
  * SIGAV-UAGRM | Conexión Segura a la Base de Datos
  * Usa PDO con Prepared Statements para prevenir Inyecciones SQL.
+ * Sincroniza zona horaria oficial de Bolivia (America/La_Paz, UTC-4).
  */
+date_default_timezone_set('America/La_Paz');
 
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'uagrm_control_vehicular');
@@ -21,6 +23,7 @@ function getDBConnection(): PDO {
         ];
         try {
             $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+            $pdo->exec("SET time_zone = '-04:00'");
         } catch (PDOException $e) {
             http_response_code(500);
             die(json_encode(['error' => 'Error de conexión a la base de datos.']));

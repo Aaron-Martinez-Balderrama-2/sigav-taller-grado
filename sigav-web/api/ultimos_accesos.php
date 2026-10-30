@@ -11,7 +11,7 @@ try {
     $lastId = (int) ($_GET['last_id'] ?? 0);
 
     $stmt = $pdo->prepare("
-        SELECT id, placa, tipo_vehiculo_ia, confianza_ia,
+        SELECT id, placa, tipo_vehiculo_ia, color_vehiculo, confianza_ia,
                hora_ingreso, puerta_ingreso, 
                hora_salida, puerta_salida,
                alerta_disparada

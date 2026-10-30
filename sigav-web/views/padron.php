@@ -1,8 +1,18 @@
 <?php
 /**
  * SIGAV-UAGRM | Padrón Vehicular
- * Formulario en modal emergente. Tabla con scroll horizontal.
+ * Consulta permitida para Administrador y Guardia (CU07).
+ * Registro, edición y gestión de lista negra exclusivos para Administrador (CU06, CU08, CU09).
  */
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+$esAdminSesion = (($_SESSION['user_role'] ?? '') === 'Administrador') || ((int) ($_SESSION['id_rol'] ?? 0) === 1);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$esAdminSesion) {
+    header('Location: dashboard.php?error=acceso_denegado');
+    exit;
+}
+
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../config/database.php';
 
@@ -10,7 +20,7 @@ $pdo = getDBConnection();
 $msg = '';
 $msgType = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isAdmin) {
     $action = $_POST['action'] ?? '';
     if ($action === 'registrar') {
         $placa       = strtoupper(trim($_POST['placa'] ?? ''));
@@ -19,9 +29,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $tipoProp    = htmlspecialchars(trim($_POST['tipo_propietario'] ?? ''));
         $facultad    = htmlspecialchars(trim($_POST['facultad'] ?? ''));
         $estado      = $_POST['estado_acceso'] ?? 'PERMITIDO';
+        $estadosValidos = ['PERMITIDO', 'DENEGADO', 'LISTA_NEGRA'];
 
         if (empty($placa) || empty($propietario)) {
             $msg = 'La placa y el propietario son obligatorios.';
+            $msgType = 'error';
+        } elseif (!in_array($estado, $estadosValidos, true)) {
+            $msg = 'Estado de acceso no válido.';
             $msgType = 'error';
         } else {
             try {
@@ -34,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         estado_acceso = VALUES(estado_acceso)
                 ");
                 $stmt->execute([':placa'=>$placa, ':tipo'=>$tipo, ':prop'=>$propietario, ':tipoProp'=>$tipoProp, ':facultad'=>$facultad, ':estado'=>$estado]);
-                $msg = "Vehículo {$placa} registrado correctamente.";
+                $msg = "Vehículo {$placa} guardado correctamente en el padrón.";
                 $msgType = 'success';
             } catch (Exception $e) {
                 $msg = 'Error al guardar el vehículo.';
@@ -74,9 +88,11 @@ $vehiculos = $stmt->fetchAll();
                 <input type="text" name="q" id="padronSearchInput" placeholder="Buscar placa o propietario..."
                        value="<?php echo $search; ?>">
             </form>
-            <button class="btn btn-primary btn-sm" onclick="document.getElementById('padronModal').classList.add('show')" id="newVehicleBtn">
+            <?php if ($isAdmin): ?>
+            <button type="button" class="btn btn-primary btn-sm" onclick="openNewVehicle()" id="newVehicleBtn">
                 + Nuevo Vehículo
             </button>
+            <?php endif; ?>
         </div>
     </div>
     <div class="table-scroll">
@@ -90,11 +106,14 @@ $vehiculos = $stmt->fetchAll();
                 <th>Facultad</th>
                 <th>Estado</th>
                 <th>Fecha Registro</th>
+                <?php if ($isAdmin): ?>
+                <th>Acciones</th>
+                <?php endif; ?>
             </tr>
         </thead>
         <tbody>
             <?php if (empty($vehiculos)): ?>
-                <tr><td colspan="7" style="text-align:center;color:var(--on-surface-muted);padding:40px;">No hay vehículos registrados.</td></tr>
+                <tr><td colspan="<?php echo $isAdmin ? 8 : 7; ?>" style="text-align:center;color:var(--on-surface-muted);padding:40px;">No hay vehículos registrados.</td></tr>
             <?php else: ?>
                 <?php foreach ($vehiculos as $v): ?>
                     <tr>
@@ -105,12 +124,27 @@ $vehiculos = $stmt->fetchAll();
                         <td><?php echo htmlspecialchars($v['facultad'] ?: '-'); ?></td>
                         <td>
                             <?php
-                            $badgeMap = ['PERMITIDO'=>'badge-green','DENEGADO'=>'badge-amber','LISTA_NEGRA'=>'badge-red'];
+                            $badgeMap = ['PERMITIDO'=>'badge-green','DENEGADO'=>'badge-amber','LISTA_NEGRA'=>'badge-dark'];
                             $bc = $badgeMap[$v['estado_acceso']] ?? 'badge-blue';
                             ?>
-                            <span class="badge <?php echo $bc; ?>"><?php echo $v['estado_acceso']; ?></span>
+                            <span class="badge <?php echo $bc; ?>"><?php echo htmlspecialchars($v['estado_acceso']); ?></span>
                         </td>
                         <td><?php echo date('d/m/Y', strtotime($v['fecha_registro'])); ?></td>
+                        <?php if ($isAdmin): ?>
+                        <td>
+                            <button type="button" class="btn btn-outline btn-sm"
+                                    style="padding:4px 10px;font-size:0.74rem;"
+                                    data-placa="<?php echo htmlspecialchars($v['placa'], ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-tipo="<?php echo htmlspecialchars($v['tipo_vehiculo'] ?? 'Auto', ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-propietario="<?php echo htmlspecialchars($v['propietario'], ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-tipoprop="<?php echo htmlspecialchars($v['tipo_propietario'] ?? 'Estudiante', ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-facultad="<?php echo htmlspecialchars($v['facultad'] ?? '', ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-estado="<?php echo htmlspecialchars($v['estado_acceso'] ?? 'PERMITIDO', ENT_QUOTES, 'UTF-8'); ?>"
+                                    onclick="openEditVehicle(this)">
+                                ✏️ Editar
+                            </button>
+                        </td>
+                        <?php endif; ?>
                     </tr>
                 <?php endforeach; ?>
             <?php endif; ?>
@@ -119,11 +153,12 @@ $vehiculos = $stmt->fetchAll();
     </div>
 </div>
 
-<!-- Modal para crear nuevo vehículo -->
+<?php if ($isAdmin): ?>
+<!-- Modal reutilizable para registrar o editar vehículo -->
 <div class="modal-overlay" id="padronModal">
     <div class="modal-box">
         <div class="modal-header">
-            <h3>Registrar Nuevo Vehículo</h3>
+            <h3 id="padronModalTitle">Registrar Nuevo Vehículo</h3>
             <button class="modal-close" onclick="document.getElementById('padronModal').classList.remove('show')">&times;</button>
         </div>
         <div class="modal-body">
@@ -169,8 +204,8 @@ $vehiculos = $stmt->fetchAll();
                         <label for="estado_acceso">Estado de Acceso</label>
                         <select id="estado_acceso" name="estado_acceso">
                             <option value="PERMITIDO">✅ Permitido</option>
-                            <option value="DENEGADO">⛔ Denegado</option>
-                            <option value="LISTA_NEGRA">🚨 Lista Negra</option>
+                            <option value="DENEGADO">⚠️ Denegado</option>
+                            <option value="LISTA_NEGRA">⛔ Lista Negra</option>
                         </select>
                     </div>
                 </div>
@@ -184,9 +219,32 @@ $vehiculos = $stmt->fetchAll();
 </div>
 
 <script>
+    function openNewVehicle() {
+        const form = document.getElementById('padronForm');
+        form.reset();
+        const placaInput = document.getElementById('placa');
+        placaInput.readOnly = false;
+        document.getElementById('padronModalTitle').textContent = 'Registrar Nuevo Vehículo';
+        document.getElementById('padronModal').classList.add('show');
+    }
+
+    function openEditVehicle(btn) {
+        document.getElementById('padronModalTitle').textContent = 'Editar Vehículo — ' + btn.dataset.placa;
+        const placaInput = document.getElementById('placa');
+        placaInput.value = btn.dataset.placa || '';
+        placaInput.readOnly = true;
+        document.getElementById('propietario').value = btn.dataset.propietario || '';
+        document.getElementById('tipo_vehiculo').value = btn.dataset.tipo || 'Auto';
+        document.getElementById('tipo_propietario').value = btn.dataset.tipoprop || 'Estudiante';
+        document.getElementById('facultad').value = btn.dataset.facultad || '';
+        document.getElementById('estado_acceso').value = btn.dataset.estado || 'PERMITIDO';
+        document.getElementById('padronModal').classList.add('show');
+    }
+
     // Cerrar modal con Escape o click fuera
     document.getElementById('padronModal').addEventListener('click', function(e) { if (e.target === this) this.classList.remove('show'); });
     document.addEventListener('keydown', function(e) { if (e.key === 'Escape') document.getElementById('padronModal').classList.remove('show'); });
 </script>
+<?php endif; ?>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
